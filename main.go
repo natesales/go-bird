@@ -154,7 +154,7 @@ func (d *Daemon) Protocols() ([]Protocol, error) {
 	return protocols, nil
 }
 
-// Protocols gets a slice of parsed protocols
+// Routes gets a slice of parsed routes
 func (d *Daemon) Routes(table string) ([]Route, error) {
 	d.Write("show route table " + table)
 	protocolsString, err := d.ReadString()
