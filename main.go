@@ -6,6 +6,7 @@ import (
 	"io"
 	"net"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -22,6 +23,11 @@ func trimDupSpace(s string) string {
 	return innerWhitespace.ReplaceAllString(headTailWhitespace.ReplaceAllString(s, ""), " ")
 }
 
+// isIP checks if a string is an IPv4 or IPv6 address
+func isIP(s string) bool {
+	return net.ParseIP(s) != nil
+}
+
 // Daemon stores a BIRD socket connection
 type Daemon struct {
 	Conn net.Conn
@@ -35,6 +41,15 @@ type Protocol struct {
 	State string
 	Since time.Time
 	Info  string
+}
+
+type Route struct {
+	Prefix      string
+	Interface   string
+	Protocol    string
+	AddressType string
+	Since       time.Time
+	Weight      int
 }
 
 // New returns a new Daemon
@@ -137,4 +152,75 @@ func (d *Daemon) Protocols() ([]Protocol, error) {
 		}
 	}
 	return protocols, nil
+}
+
+// Protocols gets a slice of parsed protocols
+func (d *Daemon) Routes(table string) ([]Route, error) {
+	d.Write("show route table " + table)
+	protocolsString, err := d.ReadString()
+	if err != nil {
+		return nil, err
+	}
+
+	var routes []Route
+	headerString := "Table " + table + ":"
+	currentRoute := ""
+	seenHeader := false
+	lines := strings.Split(strings.TrimSuffix(protocolsString, "\n"), "\n")
+	for i := 0; i < len(lines); i++ {
+		line := trimDupSpace(lines[i])
+		// Skip header
+		if seenHeader {
+			parts := strings.Split(line, " ")
+			// This really should never be true, but just in-case
+			if parts[0] != "dev" {
+				if isIP(strings.Split(parts[0], "/")[0]) {
+					currentRoute = parts[0]
+				} else {
+					// Lets just always have the prefix in front to standardize the layout
+					parts = append([]string{currentRoute}, parts...)
+				}
+
+				// Build base Route struct
+				route := Route{
+					Prefix:      currentRoute,
+					Interface:   "",
+					Protocol:    parts[2][1:], // Remove the leading [
+					AddressType: parts[1],
+				}
+
+				// Lets get the time
+				timeVal, err := time.Parse("2006-01-02 15:04:05", parts[3]+" "+strings.Split(parts[4], "]")[0])
+				if err != nil {
+					return nil, err
+				}
+				route.Since = timeVal
+
+				// Lets get the weight
+				weightIndex := 6
+				if parts[weightIndex-1] == "from" {
+					weightIndex += 2
+				}
+				if parts[weightIndex-1] != "*" {
+					weightIndex = weightIndex - 1
+				}
+				weight, err := strconv.Atoi(strings.Split(parts[weightIndex][1:len(parts[weightIndex])-1], "/")[0])
+				if err != nil {
+					return nil, err
+				}
+				route.Weight = weight
+
+				// Lets get the interface name
+				i++
+				interfaceLine := trimDupSpace(lines[i])
+				if strings.Contains(interfaceLine, "dev") {
+					route.Interface = interfaceLine[4:] // Remove the leading dev[SPACE]
+				}
+				routes = append(routes, route)
+			}
+		} else if strings.Contains(line, headerString) {
+			seenHeader = true
+		}
+	}
+	return routes, nil
 }
