@@ -57,7 +57,7 @@ func ParseOne(p string) (*ProtocolState, error) {
 		Table:     headerParts[2],
 		State:     headerParts[3],
 		Since:     since,
-		Info:      strings.Join(headerParts[6:], " "),
+		Info:      trimDupSpace(strings.Join(headerParts[6:], " ")),
 		Imported:  -1,
 		Exported:  -1,
 		Preferred: -1,
