@@ -47,7 +47,7 @@ func parseBGP(s string) (*BGP, error) {
 	}
 
 	if !strings.Contains(s, "BGP state:") {
-		return out, nil
+		return nil, nil
 	}
 
 	addressRegex := regexp.MustCompile(`(.*)Neighbor address:(.*)`)
