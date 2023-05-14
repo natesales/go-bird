@@ -8,7 +8,7 @@ import (
 )
 
 func TestProtocolParseOne(t *testing.T) {
-	input := `
+	p, err := ParseOne(`
 static4    Static     master4    up     2023-03-15 19:18:50
   Channel ipv4
 	State:          UP
@@ -22,9 +22,7 @@ static4    Static     master4    up     2023-03-15 19:18:50
 	  Import withdraws:            0          0        ---          0          0
 	  Export updates:              0          0          0        ---          0
 	  Export withdraws:            0        ---        ---        ---          0
-`
-
-	p, err := ParseOne(input)
+`)
 	assert.Nil(t, err)
 	assert.Equal(t, "static4", p.Name)
 	assert.Equal(t, "Static", p.Proto)
@@ -33,9 +31,62 @@ static4    Static     master4    up     2023-03-15 19:18:50
 	assert.Equal(t, "2023-03-15 19:18:50", p.Since.Format(time.DateTime))
 	assert.Equal(t, "", p.Info)
 
-	assert.Equal(t, 3, p.Imported)
-	assert.Equal(t, 2, p.Exported)
-	assert.Equal(t, 1, p.Preferred)
+	assert.Equal(t, 3, p.Routes.Imported)
+	assert.Equal(t, 2, p.Routes.Exported)
+	assert.Equal(t, 1, p.Routes.Preferred)
+
+	p, err = ParseOne(`EXAMPLE_AS65522_v6 BGP        ---        up     2023-03-26 03:53:56  Established   
+  BGP state:          Established
+    Neighbor address: 2001:db8::1
+    Neighbor AS:      65522
+    Local AS:         65511
+    Neighbor ID:      192.168.1.2
+    Local capabilities
+      Multiprotocol
+        AF announced: ipv6
+      Route refresh
+      Graceful restart
+      4-octet AS numbers
+      Enhanced refresh
+      Long-lived graceful restart
+    Neighbor capabilities
+      Multiprotocol
+        AF announced: ipv6
+      Route refresh
+      Graceful restart
+      4-octet AS numbers
+      Enhanced refresh
+      Long-lived graceful restart
+    Session:          external AS4
+    Source address:   2001:db8::1
+    Hold timer:       212.093/240
+    Keepalive timer:  36.625/80
+  Channel ipv6
+    State:          UP
+    Table:          master6
+    Preference:     100
+    Input filter:   (unnamed)
+    Output filter:  (unnamed)
+    Import limit:   200000
+      Action:       disable
+    Routes:         176493 imported, 0 filtered, 2 exported, 175609 preferred
+    Route change stats:     received   rejected   filtered    ignored   accepted
+      Import updates:       24624786          0          0    1059583   23565203
+      Import withdraws:      1469476          0        ---      12109    1457367
+      Export updates:       32885258   14165213   18720043        ---          2
+      Export withdraws:      1469649        ---        ---        ---          0
+    BGP Next hop:   2001:db8::1 fe80::face:0:1
+`)
+	assert.Nil(t, err)
+	assert.Equal(t, "EXAMPLE_AS65522_v6", p.Name)
+	assert.Equal(t, "BGP", p.Proto)
+	assert.Equal(t, "---", p.Table)
+	assert.Equal(t, "up", p.State)
+	assert.Equal(t, "2023-03-26 03:53:56", p.Since.Format(time.DateTime))
+	assert.Equal(t, "Established", p.Info)
+	assert.Equal(t, 176493, p.Routes.Imported)
+	assert.Equal(t, 0, p.Routes.Filtered)
+	assert.Equal(t, 2, p.Routes.Exported)
 }
 
 var testInput = `
@@ -311,4 +362,18 @@ func TestParse(t *testing.T) {
 		t.Fatal(err)
 	}
 	assert.Len(t, protocols, 14)
+}
+
+func TestProtocolParseRoutes(t *testing.T) {
+	for _, tc := range []struct {
+		In     string
+		Routes *Routes
+	}{
+		{"Routes:         176493 imported, 0 filtered, 2 exported, 175609 preferred", &Routes{Imported: 176493, Filtered: 0, Exported: 2, Preferred: 175609}},
+		{"Routes:         1 imported, 0 exported, 0 preferred", &Routes{Imported: 1, Filtered: -1, Exported: 0, Preferred: 0}},
+	} {
+		routes, err := parseRoutes(tc.In)
+		assert.Nil(t, err)
+		assert.Equal(t, tc.Routes, routes)
+	}
 }
