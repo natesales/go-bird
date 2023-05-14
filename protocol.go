@@ -15,6 +15,13 @@ type Routes struct {
 	Preferred int
 }
 
+type BGP struct {
+	NeighborAddress string
+	NeighborAS      int
+	LocalAS         int
+	NeighborID      string
+}
+
 type ProtocolState struct {
 	Name   string
 	Proto  string
@@ -23,11 +30,72 @@ type ProtocolState struct {
 	Since  time.Time
 	Info   string
 	Routes *Routes
+	BGP    *BGP
 }
 
 func trimRepeatingSpace(s string) string {
 	space := regexp.MustCompile(`\s+`)
 	return space.ReplaceAllString(s, " ")
+}
+
+func parseBGP(s string) (*BGP, error) {
+	out := &BGP{
+		NeighborAddress: "",
+		NeighborAS:      -1,
+		LocalAS:         -1,
+		NeighborID:      "",
+	}
+
+	if !strings.Contains(s, "BGP state:") {
+		return out, nil
+	}
+
+	addressRegex := regexp.MustCompile(`(.*)Neighbor address:(.*)`)
+	address := trimRepeatingSpace(
+		trimDupSpace(
+			addressRegex.FindString(s),
+		),
+	)
+	out.NeighborAddress = strings.Split(address, "Neighbor address: ")[1]
+
+	neighborASRegex := regexp.MustCompile(`(.*)Neighbor AS:(.*)`)
+	neighborAS := trimRepeatingSpace(
+		trimDupSpace(
+			neighborASRegex.FindString(s),
+		),
+	)
+	neighborAS = strings.Split(neighborAS, "Neighbor AS: ")[1]
+	neighborASInt, err := strconv.ParseInt(neighborAS, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+	out.NeighborAS = int(neighborASInt)
+
+	localASRegex := regexp.MustCompile(`(.*)Local AS:(.*)`)
+	localAS := trimRepeatingSpace(
+		trimDupSpace(
+			localASRegex.FindString(s),
+		),
+	)
+	localAS = strings.Split(localAS, "Local AS: ")[1]
+	localASInt, err := strconv.ParseInt(localAS, 10, 32)
+	if err != nil {
+		return nil, err
+	}
+	out.LocalAS = int(localASInt)
+
+	neighborIDRegex := regexp.MustCompile(`(.*)Neighbor ID:(.*)`)
+	neighborID := trimRepeatingSpace(
+		trimDupSpace(
+			neighborIDRegex.FindString(s),
+		),
+	)
+	neighborIDParts := strings.Split(neighborID, "Neighbor ID: ")
+	if len(neighborIDParts) > 1 {
+		out.NeighborID = neighborIDParts[1]
+	}
+
+	return out, nil
 }
 
 func parseRoutes(s string) (*Routes, error) {
@@ -110,6 +178,12 @@ func ParseOne(p string) (*ProtocolState, error) {
 		return nil, err
 	}
 	protocolState.Routes = routes
+
+	bgp, err := parseBGP(p)
+	if err != nil {
+		return nil, err
+	}
+	protocolState.BGP = bgp
 
 	return protocolState, nil
 }

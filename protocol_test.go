@@ -87,6 +87,11 @@ static4    Static     master4    up     2023-03-15 19:18:50
 	assert.Equal(t, 176493, p.Routes.Imported)
 	assert.Equal(t, 0, p.Routes.Filtered)
 	assert.Equal(t, 2, p.Routes.Exported)
+
+	assert.Equal(t, "2001:db8::1", p.BGP.NeighborAddress)
+	assert.Equal(t, 65522, p.BGP.NeighborAS)
+	assert.Equal(t, 65511, p.BGP.LocalAS)
+	assert.Equal(t, "192.168.1.2", p.BGP.NeighborID)
 }
 
 var testInput = `
