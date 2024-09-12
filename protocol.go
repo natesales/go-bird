@@ -211,6 +211,9 @@ func ParseShowProtocols(protocolsString string) ([]Protocol, error) {
 		// Skip header
 		if !(strings.Contains(line, "Name Proto Table") || strings.Contains(line, "ready.")) {
 			parts := strings.Split(line, " ")
+			if len(parts) < 6 {
+				continue
+			}
 			info := strings.Join(parts[6:], " ")
 			establishedSince := parts[4] + " " + parts[5]
 			layout := "2006-01-02 15:04:05"

@@ -404,6 +404,9 @@ func TestParseShowProtocols(t *testing.T) {
 		Protocols []Protocol
 	}{
 		{
+			In: "invalid input",
+		},
+		{
 			In: testInputShowProtocolsLongRunning,
 			Protocols: []Protocol{
 				{
