@@ -384,15 +384,10 @@ func TestProtocolParseRoutes(t *testing.T) {
 }
 
 const testInputShowProtocolsLongRunning = `Name       Proto      Table      State  Since         Info
-session1 BGP        ---        up     2024-07-22    Established   
-session2 BGP        ---        start     2024-07-22    Passive   
-direct1    Direct     ---        up     2024-06-17    
-kernel1    Kernel     master4    up     2024-06-17 `
-
-const testInputShowProtocolsShortRunning = `Name       Proto      Table      State  Since         Info
-session1 BGP        ---        up     14:07:29.523    Established   
-session2 BGP        ---        up     12:18:11.199    Established
-`
+session1 BGP        ---        up     2024-07-22 00:00:12   Established   
+session2 BGP        ---        start     2024-07-22 00:00:13   Passive   
+direct1    Direct     ---        up     2024-06-17 00:00:14   
+kernel1    Kernel     master4    up     2024-06-17 15:03:12`
 
 func mustParseTime(layout, s string) time.Time {
 	t, err := time.Parse(layout, s)
@@ -403,6 +398,7 @@ func mustParseTime(layout, s string) time.Time {
 }
 
 func TestParseShowProtocols(t *testing.T) {
+	const layout = "2006-01-02 15:04:05"
 	for _, tc := range []struct {
 		In        string
 		Protocols []Protocol
@@ -415,7 +411,7 @@ func TestParseShowProtocols(t *testing.T) {
 					Proto: "BGP",
 					Table: "---",
 					State: "up",
-					Since: mustParseTime("2006-01-02", "2024-07-22"),
+					Since: mustParseTime(layout, "2024-07-22 00:00:12"),
 					Info:  "Established",
 				},
 				{
@@ -423,7 +419,7 @@ func TestParseShowProtocols(t *testing.T) {
 					Proto: "BGP",
 					Table: "---",
 					State: "start",
-					Since: mustParseTime("2006-01-02", "2024-07-22"),
+					Since: mustParseTime(layout, "2024-07-22 00:00:13"),
 					Info:  "Passive",
 				},
 				{
@@ -431,35 +427,14 @@ func TestParseShowProtocols(t *testing.T) {
 					Proto: "Direct",
 					Table: "---",
 					State: "up",
-					Since: mustParseTime("2006-01-02", "2024-06-17"),
+					Since: mustParseTime(layout, "2024-06-17 00:00:14"),
 				},
 				{
 					Name:  "kernel1",
 					Proto: "Kernel",
 					Table: "master4",
 					State: "up",
-					Since: mustParseTime("2006-01-02", "2024-06-17"),
-				},
-			},
-		},
-		{
-			In: testInputShowProtocolsShortRunning,
-			Protocols: []Protocol{
-				{
-					Name:  "session1",
-					Proto: "BGP",
-					Table: "---",
-					State: "up",
-					Since: mustParseTime("2006-01-02", "2024-07-22"),
-					Info:  "Established",
-				},
-				{
-					Name:  "session2",
-					Proto: "BGP",
-					Table: "---",
-					State: "up",
-					Since: mustParseTime("2006-01-02", "2024-07-22"),
-					Info:  "Established",
+					Since: mustParseTime(layout, "2024-06-17 15:03:12"),
 				},
 			},
 		},

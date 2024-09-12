@@ -203,6 +203,7 @@ func Parse(p string) ([]*ProtocolState, error) {
 }
 
 // ParseShowProtocols parses the output of `show protocols`
+// bird must be configured to use the iso long timeformat. Other timeformats are currently not supported
 func ParseShowProtocols(protocolsString string) ([]Protocol, error) {
 	var protocols []Protocol
 	for _, line := range strings.Split(strings.TrimSuffix(protocolsString, "\n"), "\n") {
@@ -210,14 +211,9 @@ func ParseShowProtocols(protocolsString string) ([]Protocol, error) {
 		// Skip header
 		if !(strings.Contains(line, "Name Proto Table") || strings.Contains(line, "ready.")) {
 			parts := strings.Split(line, " ")
-			layout := "2006-01-02"
-			establishedSince := parts[4]
-			info := strings.Join(parts[5:], " ")
-			if len(parts) > 6 {
-				layout = "2006-01-02 15:04:05"
-				establishedSince = parts[4] + " " + parts[5]
-				info = strings.Join(parts[6:], " ")
-			}
+			info := strings.Join(parts[6:], " ")
+			establishedSince := parts[4] + " " + parts[5]
+			layout := "2006-01-02 15:04:05"
 			timeVal, err := time.Parse(layout, establishedSince)
 			if err != nil {
 				return nil, err
