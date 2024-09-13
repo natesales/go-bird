@@ -130,28 +130,7 @@ func (d *Daemon) Protocols() ([]Protocol, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	var protocols []Protocol
-	for _, line := range strings.Split(strings.TrimSuffix(protocolsString, "\n"), "\n") {
-		line = trimDupSpace(line)
-		// Skip header
-		if !(strings.Contains(line, "Name Proto Table") || strings.Contains(line, "ready.")) {
-			parts := strings.Split(line, " ")
-			timeVal, err := time.Parse("2006-01-02 15:04:05", parts[4]+" "+parts[5])
-			if err != nil {
-				return nil, err
-			}
-			protocols = append(protocols, Protocol{
-				Name:  parts[0],
-				Proto: parts[1],
-				Table: parts[2],
-				State: parts[3],
-				Since: timeVal,
-				Info:  strings.Join(parts[6:], " "),
-			})
-		}
-	}
-	return protocols, nil
+	return ParseShowProtocols(protocolsString)
 }
 
 // Routes gets a slice of parsed routes

@@ -382,3 +382,68 @@ func TestProtocolParseRoutes(t *testing.T) {
 		assert.Equal(t, tc.Routes, routes)
 	}
 }
+
+const testInputShowProtocolsLongRunning = `Name       Proto      Table      State  Since         Info
+session1 BGP        ---        up     2024-07-22 00:00:12   Established   
+session2 BGP        ---        start     2024-07-22 00:00:13   Passive   
+direct1    Direct     ---        up     2024-06-17 00:00:14   
+kernel1    Kernel     master4    up     2024-06-17 15:03:12`
+
+func mustParseTime(layout, s string) time.Time {
+	t, err := time.Parse(layout, s)
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
+func TestParseShowProtocols(t *testing.T) {
+	const layout = "2006-01-02 15:04:05"
+	for _, tc := range []struct {
+		In        string
+		Protocols []Protocol
+	}{
+		{
+			In: "invalid input",
+		},
+		{
+			In: testInputShowProtocolsLongRunning,
+			Protocols: []Protocol{
+				{
+					Name:  "session1",
+					Proto: "BGP",
+					Table: "---",
+					State: "up",
+					Since: mustParseTime(layout, "2024-07-22 00:00:12"),
+					Info:  "Established",
+				},
+				{
+					Name:  "session2",
+					Proto: "BGP",
+					Table: "---",
+					State: "start",
+					Since: mustParseTime(layout, "2024-07-22 00:00:13"),
+					Info:  "Passive",
+				},
+				{
+					Name:  "direct1",
+					Proto: "Direct",
+					Table: "---",
+					State: "up",
+					Since: mustParseTime(layout, "2024-06-17 00:00:14"),
+				},
+				{
+					Name:  "kernel1",
+					Proto: "Kernel",
+					Table: "master4",
+					State: "up",
+					Since: mustParseTime(layout, "2024-06-17 15:03:12"),
+				},
+			},
+		},
+	} {
+		protocols, err := ParseShowProtocols(tc.In)
+		assert.Nil(t, err)
+		assert.Equal(t, tc.Protocols, protocols)
+	}
+}

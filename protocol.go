@@ -201,3 +201,35 @@ func Parse(p string) ([]*ProtocolState, error) {
 	}
 	return protocolStates, nil
 }
+
+// ParseShowProtocols parses the output of `show protocols`
+// bird must be configured to use the iso long timeformat. Other timeformats are currently not supported
+func ParseShowProtocols(protocolsString string) ([]Protocol, error) {
+	var protocols []Protocol
+	for _, line := range strings.Split(strings.TrimSuffix(protocolsString, "\n"), "\n") {
+		line = trimDupSpace(line)
+		// Skip header
+		if !(strings.Contains(line, "Name Proto Table") || strings.Contains(line, "ready.")) {
+			parts := strings.Split(line, " ")
+			if len(parts) < 6 {
+				continue
+			}
+			info := strings.Join(parts[6:], " ")
+			establishedSince := parts[4] + " " + parts[5]
+			layout := "2006-01-02 15:04:05"
+			timeVal, err := time.Parse(layout, establishedSince)
+			if err != nil {
+				return nil, err
+			}
+			protocols = append(protocols, Protocol{
+				Name:  parts[0],
+				Proto: parts[1],
+				Table: parts[2],
+				State: parts[3],
+				Since: timeVal,
+				Info:  info,
+			})
+		}
+	}
+	return protocols, nil
+}
